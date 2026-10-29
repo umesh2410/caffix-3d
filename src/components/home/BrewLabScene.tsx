@@ -18,6 +18,7 @@ import {
   isStacked,
   TAU,
   useAdaptiveDpr,
+  warmUp,
 } from "./sceneUtils";
 
 /** Scroll progress through the brew lab, 0 → 1 across five steps. */
@@ -325,6 +326,8 @@ export default function BrewLabScene({ active, lowPower, ...rest }: Props) {
 
 function Lab({ stateRef, tagRef, lowPower, onReady }: Omit<Props, "active">) {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   const cam = useRef({ pos: new THREE.Vector3(...CAMERA[0].pos), target: new THREE.Vector3(...CAMERA[0].target) });
   const motion = useRef({ spin: 0, spinSpeed: 0, vortex: 0, swirl: 0, p: -1 });
   const pointer = useRef({ x: 0, y: 0 });
@@ -419,11 +422,13 @@ function Lab({ stateRef, tagRef, lowPower, onReady }: Omit<Props, "active">) {
       if (cancelled) return;
       sachetTex.needsUpdate = true;
       onReady();
+      // The milk, foam, ice and droplets start hidden; build their shaders now rather than mid-scroll.
+      warmUp(gl, scene, camera, [marbleTex, swirlTex, granuleTex, sachetTex]);
     });
     return () => {
       cancelled = true;
     };
-  }, [sachetTex, onReady]);
+  }, [gl, scene, camera, marbleTex, swirlTex, granuleTex, sachetTex, onReady]);
 
   useEffect(() => {
     if (!window.matchMedia("(pointer: fine)").matches) return;
@@ -639,7 +644,9 @@ function Lab({ stateRef, tagRef, lowPower, onReady }: Omit<Props, "active">) {
               ? tmpV.copy(frother.current.position).add(tmpV2.set(0.25, 1.6, 0))
               : tmpV.set(0.8, top + 0.2, 0);
       anchor.project(state.camera);
-      const x = (anchor.x * 0.5 + 0.5) * state.size.width;
+      // Keep the whole label on screen: near the right edge it slides left instead of being cut off.
+      const maxX = Math.max(12, state.size.width - tag.offsetWidth - 12);
+      const x = Math.min(maxX, Math.max(12, (anchor.x * 0.5 + 0.5) * state.size.width));
       const y = (-anchor.y * 0.5 + 0.5) * state.size.height;
       tag.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
     }

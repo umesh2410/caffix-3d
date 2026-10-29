@@ -24,6 +24,8 @@ import {
   clamp01,
   easeInOutCubic,
   easeOutCubic,
+  easeOutQuart,
+  warmUp,
   isStacked,
   mulberry32,
   smooth,
@@ -53,6 +55,7 @@ interface Props {
 
 interface Anim {
   ready: boolean;
+  warm: boolean;
   announced: boolean;
   introStart: number;
   intro: number;
@@ -302,7 +305,9 @@ export default function JarScene({ active, lowPower, ...rest }: Props) {
 
 function Scene({ stateRef, partsRef, flavour, lowPower, onReady }: Omit<Props, "active">) {
   const gl = useThree((s) => s.gl);
-  const anim = useRef<Anim>({ ready: false, announced: false, introStart: -1, intro: 0, spinStart: -1, pending: null, assets: null });
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const anim = useRef<Anim>({ ready: false, warm: false, announced: false, introStart: -1, intro: 0, spinStart: -1, pending: null, assets: null });
   const pointer = useRef({ x: 0, y: 0, sx: 0, sy: 0 });
   const pose = useRef<Key | null>(null);
   const labelsShown = useRef(false);
@@ -391,11 +396,15 @@ function Scene({ stateRef, partsRef, flavour, lowPower, onReady }: Omit<Props, "
       });
       a.ready = true;
       onReady();
+      // Build the open-jar, range and ribbon shaders now, while the intro still covers the page.
+      warmUp(gl, scene, camera, [labelTex, powderTex, shadowTex, ...miniTextures]).then(() => {
+        a.warm = true;
+      });
     });
     return () => {
       cancelled = true;
     };
-  }, [labelTex, miniTextures, onReady]);
+  }, [gl, scene, camera, labelTex, powderTex, shadowTex, miniTextures, onReady]);
 
   // Flavour change: spin the jar once and swap the label while its back faces the camera.
   useEffect(() => {
@@ -433,13 +442,14 @@ function Scene({ stateRef, partsRef, flavour, lowPower, onReady }: Omit<Props, "
     const hover = stateRef.current?.hover ?? null;
 
     // Tell the intro the hero is ready once this first frame (shaders compiled) has been drawn.
-    if (a.ready && !a.announced) {
+    if (a.ready && a.warm && !a.announced) {
       a.announced = true;
       requestAnimationFrame(announceHeroReady);
     }
     // Start the jar's entrance once its label is painted and the page intro has opened.
     if (a.ready && a.introStart < 0 && !document.documentElement.classList.contains("intro-active")) a.introStart = now;
-    const intro = easeOutCubic(a.introStart < 0 ? 0 : clamp01((now - a.introStart) / 1.8));
+    // Short and front-loaded: the jar is most of the way up while the intro doors are still opening.
+    const intro = easeOutQuart(a.introStart < 0 ? 0 : clamp01((now - a.introStart) / 1.05));
     a.intro = intro;
 
     // Flavour spin
@@ -491,13 +501,13 @@ function Scene({ stateRef, partsRef, flavour, lowPower, onReady }: Omit<Props, "
     const halfH = Math.tan(THREE.MathUtils.degToRad(FOV / 2)) * p.cam;
     const halfW = halfH * aspect;
     if (root.current) {
-      root.current.position.set(p.x * halfW, p.y * halfH - (1 - intro) * 2.6 + Math.sin(now * 0.8) * 0.035, 0);
+      root.current.position.set(p.x * halfW, p.y * halfH - (1 - intro) * 1.9 + Math.sin(now * 0.8) * 0.035, 0);
       root.current.scale.setScalar(p.scale * (0.86 + 0.14 * intro));
     }
     if (jar.current) {
       jar.current.rotation.set(
         p.pitch + ptr.sy * 0.07 + Math.sin(now * 0.6) * 0.015,
-        p.rot + spin + ptr.sx * 0.24 - (1 - intro) * 2.4,
+        p.rot + spin + ptr.sx * 0.24 - (1 - intro) * 1.6,
         p.tilt + Math.sin(now * 0.5) * 0.01
       );
     }
@@ -590,7 +600,7 @@ function Scene({ stateRef, partsRef, flavour, lowPower, onReady }: Omit<Props, "
     const heroVis = 1 - clamp01(s / 0.7);
     const flavourVis = clamp01((s - 3.35) / 0.6) * 0.6;
     const vis = Math.max(heroVis, flavourVis) * clamp01(intro * 1.4) * (1 - e);
-    const pour = a.introStart < 0 ? 0 : easeOutCubic(clamp01((now - a.introStart - 0.25) / 1.9));
+    const pour = a.introStart < 0 ? 0 : easeOutCubic(clamp01((now - a.introStart - 0.1) / 1.25));
     if (ribbons.current) ribbons.current.visible = vis > 0.01;
     if (coffeeSpin.current) coffeeSpin.current.rotation.y = now * 0.22;
     if (milkSpin.current) milkSpin.current.rotation.y = -now * 0.16;

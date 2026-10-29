@@ -16,6 +16,25 @@ export function useAdaptiveDpr(lowPower: boolean) {
   return { dpr, onChange, onFallback: () => setDpr(range.min) };
 }
 
+/**
+ * Builds every shader (including for objects that start hidden) and uploads the given textures up
+ * front, so scrolling never stalls on a first-time compile when a new part of a scene appears.
+ */
+export function warmUp(gl: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, textures: THREE.Texture[] = []) {
+  // Never hold anything up for long: on a lost context the compile status can stay "pending".
+  const cap = new Promise<void>((resolve) => setTimeout(resolve, 2500));
+  try {
+    textures.forEach((t) => gl.initTexture(t));
+    const compiled = gl.compileAsync(scene, camera).then(
+      () => undefined,
+      () => undefined
+    );
+    return Promise.race([compiled, cap]);
+  } catch {
+    return Promise.resolve();
+  }
+}
+
 export const TAU = Math.PI * 2;
 
 /** Phones and portrait tablets get the stacked composition — mirrors the CSS media query. */
@@ -24,6 +43,7 @@ export const isStacked = (w: number, h: number) => w <= 760 || (w <= 1100 && h >
 export const clamp01 =(v: number) => Math.min(1, Math.max(0, v));
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+export const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
 export const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 /** Smoothstep between edges a and b. */
 export const smooth = (a: number, b: number, x: number) => {

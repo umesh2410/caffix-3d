@@ -8,7 +8,7 @@ import { asset } from "@/lib/assets";
 import { altImage, discountPercent, getFlavour, type Product } from "@/lib/catalog";
 import { formatINR } from "@/lib/pricing";
 
-const CARD_SIZES = "(max-width: 600px) 92vw, (max-width: 1100px) 45vw, 22vw";
+const CARD_SIZES = "(max-width: 600px) 48vw, (max-width: 1100px) 45vw, 22vw";
 
 export default function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const ref = useRef<HTMLElement>(null);
