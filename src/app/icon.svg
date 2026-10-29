@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="coffee" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e2b06c"/>
+      <stop offset="1" stop-color="#9a6131"/>
+    </linearGradient>
+  </defs>
+  <!-- Espresso tile -->
+  <rect width="64" height="64" rx="14" fill="#120b07"/>
+  <!-- Caffix jar: black lid, coffee-filled glass, cream label (the hero 3D jar) -->
+  <rect x="17" y="27" width="30" height="29" rx="6" fill="url(#coffee)"/>
+  <rect x="17" y="34" width="30" height="13" fill="#f4ead9"/>
+  <rect x="23" y="38.5" width="18" height="4" rx="2" fill="#2b1a10"/>
+  <rect x="19" y="14" width="26" height="11" rx="3.5" fill="#1d1612" stroke="#d9a35b" stroke-width="1.8"/>
+  <path d="M22 19.5h20" stroke="#d9a35b" stroke-opacity=".45" stroke-width="1.2" stroke-linecap="round"/>
+</svg>
